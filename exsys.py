@@ -51,6 +51,10 @@ def to_code(string):
 
 def create_my_rules():
     rules = []
+    rules.append(Rule("Определение ОРЗ", 10,
+                      "$начало == 'постепенное', $ур_темп == 'средняя'",
+                      json.dumps({"диагноз": "ОРЗ"}, ensure_ascii=False)))
+
     rules.append(Rule("Определение нормального уровня температуры", 10,
                       "$температура >= 35, $температура < 37.1",
                       json.dumps({"ур_темп": "нормальная"}, ensure_ascii=False)))
@@ -63,9 +67,7 @@ def create_my_rules():
     rules.append(Rule("Определение здорового диагноза", 10,
                       "$ур_темп == 'нормальная'",
                       json.dumps({"диагноз": "здоров"}, ensure_ascii=False)))
-    rules.append(Rule("Определение ОРЗ", 10,
-                      "$начало == 'постепенное', $ур_темп == 'средняя'",
-                      json.dumps({"диагноз": "ОРЗ"}, ensure_ascii=False)))
+
     rules.append(Rule("Определение гриппа2", 10,
                       "$начало == 'лихорадочное', $ур_темп == 'высокая'",
                       json.dumps({"предиаг": "грипп2"}, ensure_ascii=False)))
@@ -114,42 +116,49 @@ def solving(facts):
     for rule in arr_rules:
         output += str(rule) + "\n"
 
-    for i in range(len(arr_rules)):  # проход по каждому правилу
-        fact_keys = [fact.key for fact in facts]  # ключи, которые есть. БУДУТ ДОПОЛНЯТЬСЯ
-        fact_values = [fact.value for fact in facts]
-        #print(fact_keys, fact_values)
-        output += "\nИтерация %s:\n проход правила: %s\n" % (i, arr_rules[i])
-        act = json.loads(arr_rules[i].acts)  # подгужаем действия из одного правила
-        act_as_fact = ""
-        for item in act:
-            act_as_fact = Fact(item, act[item])  # представление действия, как факт
-        # [print(fact) for fact in act_as_fact]
-        if act_as_fact.key in fact_keys:  # если факт-действие уже есть, то прожолжаем
-            output += " пропускаем, так как факт уже имеется\n"
-            continue
-        else:
-            condition = arr_rules[i].conditions  # иначе, подгружаем условия
-            # print(to_code(condition))
-            if len(condition) == 0:
-                facts.append(Fact(act_as_fact.key, act_as_fact.value))  # если условие пустое, то добавляем этот факт
-                output += " правило удовлетворяет\n"
-            else:
-                for j in range(len(facts)):
-                    #print(i, j, facts[j].key, facts[j].value)
-                    if facts[j].key in condition:
-                        if isinstance(facts[j].value, float):
-                            condition = condition.replace("$" + facts[j].key, str(facts[j].value))
-                        elif isinstance(facts[j].value, str):
-                            condition = condition.replace("$" + facts[j].key, "'" + str(facts[j].value) + "'")
-                code = to_code(condition)
-                #print(code)
-                if "$"in code:
-                    continue
-                elif eval(code):
-                    facts.append(Fact(act_as_fact.key, act_as_fact.value))
-                    output += " правило удовлетворяет\n"
+    cont = True
 
-        continue
+    while(cont):
+        cont = False
+        for i in range(len(arr_rules)):  # проход по каждому правилу
+            fact_keys = [fact.key for fact in facts]  # ключи, которые есть. БУДУТ ДОПОЛНЯТЬСЯ
+            fact_values = [fact.value for fact in facts]
+            #print(fact_keys, fact_values)
+            output += "\nИтерация %s:\n проход правила: %s\n" % (i, arr_rules[i])
+            act = json.loads(arr_rules[i].acts)  # подгужаем действия из одного правила
+            act_as_fact = ""
+            for item in act:
+                act_as_fact = Fact(item, act[item])  # представление действия, как факт
+            # [print(fact) for fact in act_as_fact]
+            if act_as_fact.key in fact_keys:  # если факт-действие уже есть, то прожолжаем
+                output += " пропускаем, так как факт уже имеется\n"
+                continue
+            else:
+                condition = arr_rules[i].conditions  # иначе, подгружаем условия
+                # print(to_code(condition))
+                if len(condition) == 0:
+                    facts.append(Fact(act_as_fact.key, act_as_fact.value))  # если условие пустое, то добавляем этот факт
+                    output += " правило удовлетворяет\n"
+                else:
+                    for j in range(len(facts)):
+                        #print(i, j, facts[j].key, facts[j].value)
+                        if facts[j].key in condition:
+                            if isinstance(facts[j].value, float):
+                                condition = condition.replace("$" + facts[j].key, str(facts[j].value))
+                            elif isinstance(facts[j].value, str):
+                                condition = condition.replace("$" + facts[j].key, "'" + str(facts[j].value) + "'")
+                    code = to_code(condition)
+                    #print(code)
+                    if "$"in code:
+                        continue
+                    elif eval(code):
+                        facts.append(Fact(act_as_fact.key, act_as_fact.value))
+                        output += " правило удовлетворяет\n"
+                        cont = True
+                        break
+
+
+
 
     output += "\n###############\nСписок фактов:\n"
     for fact in facts:
@@ -161,7 +170,7 @@ def solving(facts):
 
 
 if __name__ == "__main__":
-    #create_my_rules()
+    create_my_rules()
     # facts=input_data()
 
     facts = [Fact("температура", 37.2), Fact("начало", "постепенное")]
